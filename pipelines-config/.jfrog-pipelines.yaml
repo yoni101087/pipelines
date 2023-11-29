@@ -1,0 +1,39 @@
+pipelines:
+  - name: DockerHelloWorld
+    stages:
+      - name: Build
+        tasks:
+          - name: CloneRepo
+            type: GitClone
+            configuration:
+              repoUrl: "{{.Secrets.GITHUB_REPO_URL}}"
+              branch: "main"
+              credentials: "{{.Secrets.GITHUB_CREDENTIALS}}"
+          - name: CheckoutSpecificCommit
+            type: Bash
+            configuration:
+              script: |
+                git checkout <commit-hash>
+          - name: BuildDockerImage
+            type: DockerBuild
+            configuration:
+              dockerFile: "Dockerfile"
+              imageName: "{{.Env.ARTIFACTORY_URL}}/{{.Env.ARTIFACTORY_REPO}}/{{.Env.DOCKER_IMAGE_NAME}}:latest"
+      - name: UploadToArtifactory
+        tasks:
+          - name: SetArtifactoryCredentials
+            type: JFrogCli
+            configuration:
+              command: "rt"
+              arguments: "config --url {{.Env.ARTIFACTORY_URL}} --user {{.Env.ARTIFACTORY_USER}} --password {{.Secrets.ARTIFACTORY_ACCESS_TOKEN}} --interactive=false"
+          - name: SetDockerLogin
+            type: JFrogCli
+            configuration:
+              command: "rt"
+              arguments: "docker-login {{.Env.ARTIFACTORY_URL}}"
+          - name: PushDockerImage
+            type: JFrogCli
+            configuration:
+              command: "rt"
+              arguments: "docker-push {{.Env.ARTIFACTORY_URL}}/{{.Env.ARTIFACTORY_REPO}}/{{.Env.DOCKER_IMAGE_NAME}}:latest"
+
