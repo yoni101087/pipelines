@@ -6,9 +6,9 @@ pipelines:
           - name: CloneRepo
             type: GitClone
             configuration:
-              repoUrl: "{{.Secrets.GITHUB_REPO_URL}}"
+              repoUrl: https://github.com/yoni101087/pipelines.git
               branch: "main"
-              credentials: "{{.Secrets.GITHUB_CREDENTIALS}}"
+              credentials: "{{.Secrets.GIT_CREDENTIALS}}"
           - name: CheckoutSpecificCommit
             type: Bash
             configuration:
