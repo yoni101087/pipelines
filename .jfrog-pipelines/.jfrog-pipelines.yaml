@@ -138,4 +138,4 @@ pipelines:
           inputResources:
             - name: myGitRepo
           integrations:
-            - name: mypipelines_docker                            # <-- replace with your artifactory integration
+            - name: {{ .Values.artifactoryIntegration }}                           # <-- replace with your artifactory integration
