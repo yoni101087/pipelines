@@ -121,6 +121,6 @@ pipelines:
           dockerImageName: z0jonathanf2.jfrogdev.org/docker_local/dbp  # replace with your image path and name
           dockerImageTag: ${run_number}
           inputResources:
-            - name: GitRepo
+            - name: myGitRepo
           integrations:
             - name: mypipelines_docker                            # <-- replace with your artifactory integration
