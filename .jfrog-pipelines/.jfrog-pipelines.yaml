@@ -36,7 +36,30 @@ resources:
   - name: cron_trigger
     type: CronTrigger
     configuration:
-      interval: '0 4 * * *'     
+      interval: '0 4 * * *'  
+
+  - name: dbp_image
+    type: Image
+    configuration:
+      registry: mypipelines_docker                                # <-- replace with your artifactory integration
+      sourceRepository: docker_local               # <-- required if registry is Artifactory
+      imageName: z0jonathanf2.jfrogdev.org/docker_local/dbp  # < -- replace with your image path and name
+      imageTag: latest
+      autoPull: true   
+
+  - name: dbp_build_info
+    type: BuildInfo
+    configuration:
+      sourceArtifactory: {{ .Values.artifactoryIntegration }}
+      buildName: dbp_build
+      buildNumber: 1    
+
+  - name: dbp_promoted_build_info
+    type: BuildInfo
+    configuration:
+      sourceArtifactory: {{ .Values.artifactoryIntegration }}
+      buildName: dbp_build
+      buildNumber: 1
 
 pipelines:
   - name: pipeline_of_pipelines_1
@@ -103,14 +126,6 @@ pipelines:
             # Retrieves the commitSha from input resource
             - echo "CommitSha is $res_thisPropertyBag_commitSha"
 
-      - name: dbp_image
-        type: Image
-        configuration:
-          registry: mypipelines_docker                                # <-- replace with your artifactory integration
-          sourceRepository: docker_local               # <-- required if registry is Artifactory
-          imageName: z0jonathanf2.jfrogdev.org/docker_local/dbp  # < -- replace with your image path and name
-          imageTag: latest
-          autoPull: true
 
       - name: docker_build
         type: DockerBuild
