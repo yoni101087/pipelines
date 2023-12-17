@@ -123,4 +123,4 @@ pipelines:
           inputResources:
             - name: dbp_repo
           integrations:
-            - name: art                            # <-- replace with your artifactory integration
+            - name: mypipelines_docker                            # <-- replace with your artifactory integration
