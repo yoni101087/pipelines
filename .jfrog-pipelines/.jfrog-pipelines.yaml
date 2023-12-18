@@ -136,7 +136,7 @@ pipelines:
           affinityGroup: dbp_group
           dockerFileLocation: .
           dockerFileName: Dockerfile
-          dockerImageName: z0jonathanf2.jfrogdev.org/docker_local/dbp  # replace with your image path and name
+          dockerImageName: z0jonathanf2.jfrogdev.org/docker-local/dbp  # replace with your image path and name
           dockerImageTag: ${run_number}
           inputResources:
             - name: myGitRepo
