@@ -41,7 +41,7 @@ resources:
   - name: dbp_image
     type: Image
     configuration:
-      registry: mypipelines_docker                                # <-- replace with your artifactory integration
+      registry: artifactoryIntegration                               # <-- replace with your artifactory integration
       sourceRepository: docker_local               # <-- required if registry is Artifactory
       imageName: z0jonathanf2.jfrogdev.org/docker_local/dbp  # < -- replace with your image path and name
       imageTag: latest
