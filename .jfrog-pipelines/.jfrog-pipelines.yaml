@@ -142,7 +142,7 @@ pipelines:
             - name: myGitRepo
             - name: cron_trigger
           integrations:
-            - name: myArtifactory                            # <-- replace with your artifactory integration
+            - name: artifactoryIntegration                           # <-- replace with your artifactory integration
         execution:
           onStart:
               # - msg="Run description updated from step $step_id"
