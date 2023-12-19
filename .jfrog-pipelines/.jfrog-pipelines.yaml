@@ -53,7 +53,7 @@ resources:
 
 pipelines:
 
-  - name: pipeline Example
+  - name: pipeline_Example
     configuration:
       jfrogCliVersion: 2
       integrations:
