@@ -118,9 +118,8 @@ pipelines:
             # Utility functions documentation: https://www.jfrog.com/confluence/display/JFROG/Pipelines+Utility+Functions
             - write_output thisPropertyBag commitSha=$commitSha runID=$current_runid
 
-  - name: pipeline_of_pipelines_2
-    steps:
-      - name: p2_s1
+
+      - name: Pipeline_of_pipelines_2
         type: Bash
         configuration:
           inputResources:
@@ -131,10 +130,7 @@ pipelines:
             # Retrieves the commitSha from input resource
             - echo "CommitSha is $res_thisPropertyBag_commitSha"
 
-  - name: Docker_Quickstart
-    configuration:
-      jfrogCliVersion: 2  
-    steps:
+
       - name: docker_build
         type: DockerBuild
         configuration:
