@@ -1,21 +1,10 @@
-#name: onboarding_cinext_service
-#configuration:
-#  jfrogCliVersion: 2
-#  integrations:
-#    - name: JonathansGithub
-#    - name: entplus_deployer
-#    - name: entplus_pipelines
-#    - name: slack_dev_foundation_alerts
-#    - name: entplus_jfrog_io_docker
-#    - name: entplus_deployer_access_token
-#    - name: artifactory_bitbucket_push
-#    - name: JFrog_bitbucket
-#  environmentVariables:
+
 
 template: true   # required for local templates
 valuesFilePath: ./values.yml
 
 resources:
+
   - name: myGitRepo
     type: GitRepo
     configuration:
@@ -26,6 +15,7 @@ resources:
       branches:
         # Specifies which branches will trigger dependent steps
         include: main
+
 
   - name: thisPropertyBag
     type: PropertyBag
@@ -62,7 +52,22 @@ resources:
       buildNumber: 1
 
 pipelines:
-  - name: pipeline_of_pipelines_1
+
+  - name: pipeline Example
+    configuration:
+      jfrogCliVersion: 2
+      integrations:
+      - name: artifactoryIntegration
+#    - name: entplus_deployer
+#    - name: entplus_pipelines
+#    - name: slack_dev_foundation_alerts
+#    - name: entplus_jfrog_io_docker
+#    - name: entplus_deployer_access_token
+#    - name: artifactory_bitbucket_push
+#    - name: JFrog_bitbucket
+#  environmentVariables:
+
+ 
     steps:
       - name: p1_s1
         type: Bash
@@ -141,8 +146,6 @@ pipelines:
           inputResources:
             - name: myGitRepo
             - name: cron_trigger
-          integrations:
-            - name: artifactoryIntegration                           # <-- replace with your artifactory integration
         execution:
           onStart:
               # - msg="Run description updated from step $step_id"
@@ -154,8 +157,6 @@ pipelines:
         configuration:
           affinityGroup: dbp_group
           targetRepository: quickstarts-target-local
-          integrations:
-            - name: artifactoryIntegration                            # <-- replace with your artifactory integration
           inputSteps:
             - name: docker_build
           outputResources:
@@ -173,24 +174,9 @@ pipelines:
         type: PromoteBuild
         configuration:
           targetRepository: quickstarts-target-local
-          integrations:
-            - name: artifactoryIntegration
           inputResources:
             - name: dbp_build_info
           outputResources:
             - name: dbp_promoted_build_info
 
 
-#      - name: docker_build
-#        type: DockerBuild
-#        configuration:
-#          affinityGroup: dbp_group
-#          dockerFileLocation: .
-#          dockerFileName: Dockerfile
-#          dockerImageName: z0jonathanf2.jfrogdev.org/docker_local/dbp  # replace with your image path and name
-#          dockerImageTag: ${run_number}
-#          inputResources:
-#            - name: myGitRepo
-#          integrations:
-#            - name: artifactoryIntegration                          # <-- replace with your artifactory integration
-#
