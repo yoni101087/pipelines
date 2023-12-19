@@ -58,16 +58,7 @@ pipelines:
       jfrogCliVersion: 2
       integrations:
       - name: artifactoryIntegration
-#    - name: entplus_deployer
-#    - name: entplus_pipelines
-#    - name: slack_dev_foundation_alerts
-#    - name: entplus_jfrog_io_docker
-#    - name: entplus_deployer_access_token
-#    - name: artifactory_bitbucket_push
-#    - name: JFrog_bitbucket
 #  environmentVariables:
-
- 
     steps:
       - name: p1_s1
         type: Bash
@@ -119,7 +110,7 @@ pipelines:
             - write_output thisPropertyBag commitSha=$commitSha runID=$current_runid
 
 
-      - name: Pipeline_of_pipelines_2
+      - name: pipeline_of_pipelines_2
         type: Bash
         configuration:
           inputResources:
@@ -144,8 +135,6 @@ pipelines:
             - name: cron_trigger
         execution:
           onStart:
-              # - msg="Run description updated from step $step_id"
-              # - update_run_description "$msg"  
               - update_run_description "Add custom text for every run. Example - Build and push Docker image to Artifactory."
 
       - name: docker_push
