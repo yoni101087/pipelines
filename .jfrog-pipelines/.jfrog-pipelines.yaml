@@ -169,7 +169,7 @@ pipelines:
         type: Bash
         configuration:
           integrations:
-            - name: int_mypipelines_docker
+            - name: mypipelines_docker
           timeoutSeconds: 1800
           inputSteps:
             - name: promote_dbp_build
