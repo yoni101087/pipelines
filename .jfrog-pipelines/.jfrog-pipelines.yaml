@@ -164,4 +164,41 @@ pipelines:
           outputResources:
             - name: dbp_promoted_build_info
 
+  - name: Run container
+    configuration:
+      jfrogCliVersion: 2
+      runtime:
+        type: image
+        image:
+          custom:
+            name: releases-docker.jfrog.io/jfrog/pipelines-u18node
+            tag: "16"
+            autoPull: true
+
+    steps:
+      - name: release_task
+        type: Bash
+        execution:
+          onStart:
+            - echo "hello world"
+
+
+
+
+
+#      - name: use nodepool for deployment 
+#        type: Bash
+#        configuration:
+#          nodePool: saas-deployer-feature-build-node-pool
+#          affinityGroup: sdFeatureBuildGroup
+#          runtime:
+#            type: image
+#            image:
+#              custom:
+#                registry: repo_devops_docker
+#                name: repo-devops-docker.jfrog.io/jfrog/devops/jfrog-saas-deployer
+#                tag: '${SET_SD_DOCKER_TAG}'
+#                autoPull: true
+#                options: '--entrypoint=""'
+
 
