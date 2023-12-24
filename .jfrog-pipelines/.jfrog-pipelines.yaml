@@ -164,14 +164,33 @@ pipelines:
           outputResources:
             - name: dbp_promoted_build_info
 
+
       - name: Run_container
         type: Bash
         configuration:
+          timeoutSeconds: 1800
           inputSteps:
             - name: promote_dbp_build
+          runtime:
+            type: image
+            image:
+              custom:
+                registry: z0jonathanf2.jfrogdev.org
+                sourceRepository: quickstarts-target-local
+                name: z0jonathanf2.jfrogdev.org/quickstarts-target-local/dbp
+                tag: latest
         execution:
           onExecute:
-            - "docker run -d z0jonathanf2.jfrogdev.org/docker-local/dbp:latest"
+            - echo "Test OK"
+
+#     - name: Run_container
+#       type: Bash
+#       configuration:
+#         inputSteps:
+#           - name: promote_dbp_build
+#       execution:
+#         onExecute:
+#           - "docker run -d z0jonathanf2.jfrogdev.org/docker-local/dbp:latest"
 
 
 #      - name: Run_container
