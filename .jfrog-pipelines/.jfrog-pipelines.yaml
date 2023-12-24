@@ -23,10 +23,10 @@ resources:
       commitSha: 1
       runID: 1
       
-  - name: cron_trigger
-    type: CronTrigger
-    configuration:
-      interval: '0 4 * * *'  
+#  - name: cron_trigger
+#    type: CronTrigger
+#    configuration:
+#      interval: '0 4 * * *'  
 
   - name: dbp_image
     type: Image
@@ -66,7 +66,7 @@ pipelines:
           inputResources:
             # Sets up step to be triggered when there are commit events to myGitRepo
             - name: myGitRepo
-            - name: cron_trigger
+#            - name: cron_trigger
         execution:
           onExecute:
             # Data from input resources is available as env variables in the step
@@ -132,7 +132,7 @@ pipelines:
           dockerImageTag: ${run_number}
           inputResources:
             - name: myGitRepo
-            - name: cron_trigger
+#            - name: cron_trigger
         execution:
           onStart:
               - update_run_description "Add custom text for every run. Example - Build and push Docker image to Artifactory."
