@@ -166,6 +166,8 @@ pipelines:
 
   - name: Run_container
     configuration:
+      inputResources:
+        - name: pipeline_Example
       jfrogCliVersion: 2
       runtime:
         type: image
