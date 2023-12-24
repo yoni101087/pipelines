@@ -1,0 +1,1097 @@
+name: Saas_Deployer_Feature_Release
+configuration:
+  environmentVariables:
+    readOnly:
+      BRANCHES: '-----------------------------'
+      DEVOPS_TOOLS_BRANCH:
+        description: devops-tools branch name
+        default: master
+        values:
+          - master
+        allowCustom: true
+      SAAS_HELM_VALUES_BRANCH:
+        description: saas-helm-values branch name
+        default: master
+        values:
+          - master
+        allowCustom: true
+      SAAS_DEPLOYER_BRANCH:
+        description: saas-deployer branch name
+        default: master
+        values:
+          - master
+        allowCustom: true
+      DEPLOYER_VERSION: '-----------------------------'
+      SAAS_DEPLOYER_VERSION:
+        description: 'Set existing Saas Deployer version, skips build image step'
+        default: none
+        values:
+          - none
+        allowCustom: true
+      SETUP_ENVIRONMENT: '-----------------------------'
+      TEST_REGION:
+        description: >-
+          Test region name, if 'none' region and server deployment will be
+          skipped
+        default: none
+        values:
+          - none
+        allowCustom: true
+      ENVIRONMENT:
+        description: Environment to deploy to
+        default: development
+        values:
+          - development
+          - staging
+        allowCustom: false
+      PARENT_REGION:
+        description: Parent region name
+        default: dev-aps1
+        values:
+          - dev-aps1
+          - dev-2-euc1
+          - azdev-euw
+          - azdev-2-euw
+          - gcdev-2-euw1
+          - '------------------'
+          - stg-use1
+          - stg-2-use1
+          - stg-euc1
+          - stg-2-euc1
+          - gcstg-2-use1
+          - azstg-use-202009
+        allowCustom: false
+      EXPIRY:
+        description: Region expire time
+        default: 1h
+        values:
+          - 1h
+          - 2h
+          - 4h
+          - 6h
+          - 8h
+          - 1d
+          - 2d
+          - 1w
+        allowCustom: false
+      REGION_EXTRA_PARAMS:
+        description: 'Extra region parameters: e.g. param1=something1,param2=something2'
+        default: none
+        values:
+          - none
+        allowCustom: true
+      REGION_SERVER_PARAMS:
+        description: 'Region --server_param parameters: e.g. something1'
+        default: none
+        values:
+          - none
+        allowCustom: true
+      JFROG_PLATFORM: '-----------------------------'
+      SERVER_NAME:
+        description: 'Server name, if ''none'' server deployment will be skipped'
+        default: none
+        values:
+          - none
+        allowCustom: true
+      ACCOUNT_TYPE:
+        description: Account type
+        default: free
+        values:
+          - free
+          - enterprise_plus
+        allowCustom: false
+      DEPLOYMENT_TYPE:
+        default: cloud
+        values:
+          - cloud
+          - onprem
+      XRAY:
+        default: 'no'
+        values:
+          - 'no'
+          - 'yes'
+      PIPELINES:
+        default: 'no'
+        values:
+          - 'no'
+          - 'yes'
+      INSIGHT:
+        description: Works only with E+
+        default: 'no'
+        values:
+          - 'no'
+          - 'yes'
+      DISTRIBUTION:
+        description: Works only with E+
+        default: 'no'
+        values:
+          - 'no'
+          - 'yes'
+      EXTRA_PARAMS:
+        description: >-
+          Predefined override server parameters: e.g.
+          conf_artifactory_unified_version=latestRelease,conf_xray_unified_version=latestRelease
+        default: none
+        values:
+          - none
+        allowCustom: true
+      DEBUG:
+        description: Adds `-d` flag to jfrog_server_cli and jfrog_application commands
+        default: 'no'
+        values:
+          - 'no'
+          - 'yes'
+      SKIP_YAMLS_VALIDATION:
+        description: Skip Yamls validation
+        default: 'no'
+        values:
+          - 'no'
+          - 'yes'
+      CLEANUP_ENVIRONMENT: '-----------------------------'
+      CLEANUP:
+        description: 'Block and delete servers, undeploy test region'
+        default: 'no'
+        values:
+          - 'no'
+          - 'yes'
+  integrations:
+    - name: jfdev_agent
+    - name: pipelines_read_access
+steps:
+  - name: sd_feature_0_of_6_prep_env
+    type: Bash
+    configuration:
+      nodePool: saas-deployer-feature-build-node-pool
+      affinityGroup: sdFeatureBuildGroup
+      runtime:
+        type: image
+        image:
+          custom:
+            registry: entplus
+            name: entplus.jfrog.io/devops-docker/jfrog/devops/jfrog-saas-deployer
+            tag: latest
+            autoPull: true
+            options: '--entrypoint=""'
+      inputResources:
+        - name: saas_deployer_feature_pipelines
+          trigger: false
+        - name: saas_deployer_feat_pr
+          trigger: true
+        - name: devops_tools_feat_pr
+          trigger: true
+        - name: saas_helm_values_feat_pr
+          trigger: true
+      integrations:
+        - name: devops_auto_bitbucket
+        - name: saas_deployer_feature_release_slack
+        - name: saas_deployer_feature_release_slack_pr
+        - name: devops_saas_dev_narcissus
+      outputResources:
+        - name: sd_feature_sonar_scan
+        - name: sd_feature_deploy_test_region
+      environmentVariables:
+        LC_ALL: C.UTF-8
+        LANG: C.UTF-8
+        JFROG_SERVER_ENVIRONMENT: development
+        WORKDIR: /opt/jfrog/saas-deployer
+        JFROG_DEVOPS_TOOLS_VERSION: latest
+        NARCISSUS_USER: '${int_devops_saas_dev_narcissus_user}'
+        NARCISSUS_PASSWORD: '${int_devops_saas_dev_narcissus_password}'
+    execution:
+      onStart:
+        - 'add_run_variables RUN_URL_LINK=${step_url}'
+        - 'echo "Job=[${RUN_URL_LINK}]"'
+        - add_run_variables PIPELINES_BRANCH=master
+        - add_run_variables JFMC=no
+        - add_run_variables SD_REPLICA_COUNT=5
+      onExecute:
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - >
+          if [ "${step_triggered_by_resource_name}" == "saas_deployer_feat_pr" ]
+          || [ "${step_triggered_by_resource_name}" == "devops_tools_feat_pr" ]
+          || [ "${step_triggered_by_resource_name}" ==
+          "saas_helm_values_feat_pr" ]; then
+              echo "Triggered by PR to master ${step_triggered_by_resource_name}"
+              . pipelines/scripts/trigger-pr.sh
+          else
+              echo "Triggered manually from UI"
+              . pipelines/scripts/trigger-ui.sh
+          fi
+        - >-
+          ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/print-variables.sh
+        - >-
+          ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/validate-variables.sh
+        - |
+          if [ ! -z "${PR}" ]; then
+              echo "Started SaaS Deployer Feature Release from PR=[${PR}] Repository=[${PR_FROM}]"
+              if [ "${DOT_HOT_FIX}" == "yes" ]; then
+                  echo "By DevOps-Tools Hot Fix"
+              elif [ "${SHV_HOT_FIX}" == "yes" ]; then
+                  echo "By Saas-Helm-Values Hot Fix"
+              fi
+          elif [ "${TRIGGER_UI}" == "true" ]; then
+              echo "Started SaaS Deployer Feature Release from UI by user ${USER}"
+          fi
+        - >
+          # Skip Run if all branches are set to master
+
+          if [ "${SET_DEVOPS_TOOLS_BRANCH}" == "master" ] && [
+          "${SET_SAAS_DEPLOYER_BRANCH}" == "master" ] && [
+          "${SET_SAAS_HELM_VALUES_BRANCH}" == "master" ]; then
+              add_run_variables SKIP_RUN="true"
+          fi
+      onSuccess:
+        - >
+          if [ ! -z "${SKIP_RUN}" ]; then
+              echo "Canceling SaaS Deployer Feature Release Run"
+          elif [ "${SKIP_SD_DOCKER_IMAGE_BUILD}" == "no" ]; then
+              export JFROG_SERVER_ENVIRONMENT=development
+              echo "Fetching jfrog_saas_deployer_base_image_version from Global region"
+              add_run_variables SD_BASE_IMAGE_TAG=$(jfrog_narcissus_cli getRegionDetails --region global --param jfrog_saas_deployer_base_image_version)
+              echo "jfrog_saas_deployer_base_image_version=${SD_BASE_IMAGE_TAG}"
+              add_run_variables DEPLOYER_FEAT_PR_CHART_VERSION=$(jfrog_narcissus_cli getRegionDetails --region global --param deployer_feature_pr_chart_version)
+              echo "deployer_feature_pr_chart_version=${DEPLOYER_FEAT_PR_CHART_VERSION}"
+              echo "Triggering sonar scan build step"
+              write_output sd_feature_sonar_scan startStep="$(head /dev/urandom | tr -dc a-z0-9 | head -c 10)"
+          elif [ "${SKIP_SD_DOCKER_IMAGE_BUILD}" == "yes" ] && [
+          "${SET_TEST_REGION}" != "none" ]; then
+              echo "Skipping sonar scan and Docker image build steps and triggering test region deployment"
+              write_output sd_feature_sonar_scan startStep="$(head /dev/urandom | tr -dc a-z0-9 | head -c 10)"
+              # write_output sd_feature_deploy_test_region startStep="$(head /dev/urandom | tr -dc a-z0-9 | head -c 10)"
+          fi
+        - |
+          if [ ! -z "${PR}" ]; then
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release started \n PR=[${PR_URL}] \n Repository=[${PR_FROM}] \n Deployer version=[${SET_SD_DOCKER_TAG}] \n Run URL=[${RUN_URL_LINK}]"
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Successfully Completed"
+          else
+              if [ -z "${SKIP_RUN}" ]; then
+                  if [ "${TRIGGER_UI}" == "true" ]; then
+                      send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release started \n by user=[${USER}] \n Deployer version=[${SET_SD_DOCKER_TAG}] \n Run URL=[${RUN_URL_LINK}]"
+                  fi
+              fi
+          fi
+      onFailure:
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Failed"
+              if [ ! -z "${SLACK_USER_NAME}" ]; then
+                  export BUILD_FAILED="true"
+                  echo "Sending notification to ${SLACK_USER_NAME}"
+                  ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/slack-message-pr.sh
+              fi
+          fi
+        - |
+          if [ ! -z "${SKIP_RUN}" ]; then
+              echo "Canceling SaaS Deployer Feature Release Run"
+          else
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature failed \n Step=[${step_name}] \n Run URL=[${RUN_URL_LINK}]"
+          fi
+  - name: sd_feature_1_of_6_sonar_scan
+    type: Bash
+    configuration:
+      nodePool: saas-deployer-feature-build-node-pool
+      affinityGroup: sdFeatureBuildGroup
+      inputResources:
+        - name: sd_feature_sonar_scan
+          newVersionOnly: true
+          trigger: true
+        - name: saas_deployer_feature_pipelines
+          trigger: false
+        - name: saas_deployer_feat_pr
+          trigger: false
+        - name: devops_tools_feat_pr
+          trigger: false
+        - name: saas_helm_values_feat_pr
+          trigger: false
+      integrations:
+        - name: devops_auto_entplus
+        - name: saas_deployer_feature_release_slack_pr
+        - name: sonarqube_devops_tools
+      outputResources:
+        - name: sd_feature_build_image
+    execution:
+      onStart:
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] started"
+          fi
+        - >
+          if [ "${RESOURCE_FROM}" != "devops_tools_feat_pr" ] || [ ! -z
+          "${SKIP_PLATFORM}" ]; then
+              echo "Skipping build step as reource is not the 'devops_tools_feat_pr' or SKIP_PLATFORM=yes"
+              exit 0
+          fi
+      onExecute:
+        - 'echo "Triggered by ${PR_FROM}, scanning with Sonarqube"'
+        - 'cd ${res_devops_tools_feat_pr_resourcePath}'
+        - >-
+          git checkout ${SET_DEVOPS_TOOLS_BRANCH} && git branch && git rev-parse
+          HEAD && git status
+        - ./pipelines/scripts/run-sonar-scan.sh
+      onSuccess:
+        - echo "Triggering image build"
+        - >-
+          write_output sd_feature_build_image startStep="$(head /dev/urandom |
+          tr -dc a-z0-9 | head -c 10)"
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Successfully Completed"
+          fi
+      onFailure:
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Failed"
+              if [ ! -z "${SLACK_USER_NAME}" ]; then
+                  export BUILD_FAILED="true"
+                  echo "Sending notification to ${SLACK_USER_NAME}"
+                  ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/slack-message-pr.sh
+              fi
+          else
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release failed \n Deployer version=[${SET_SD_DOCKER_TAG}] \n Step=[${step_name}] \n Run URL=[${step_url}]"
+          fi
+  - name: sd_feature_2_of_6_build_image
+    type: Bash
+    configuration:
+      nodePool: saas-deployer-feature-build-node-pool
+      affinityGroup: sdFeatureBuildGroup
+      environmentVariables:
+        REPO_USER: '${int_devops_auto_entplus_user}'
+        REPO_PASS: '${int_devops_auto_entplus_apikey}'
+        DOCKER_PULL_REPO: docker.jfrog.io
+        DOCKER_PUSH_REPO: repo-devops-docker.jfrog.io
+        DEV_RUN: 'true'
+      inputResources:
+        - name: sd_feature_build_image
+          newVersionOnly: true
+          trigger: true
+        - name: saas_deployer_feature_pipelines
+          trigger: false
+        - name: saas_deployer_feat_pr
+          trigger: false
+        - name: devops_tools_feat_pr
+          trigger: false
+        - name: saas_helm_values_feat_pr
+          trigger: false
+      integrations:
+        - name: devops_auto_entplus
+        - name: saas_deployer_feature_release_slack
+        - name: saas_deployer_feature_release_slack_pr
+      outputResources:
+        - name: sd_feature_validate_yamls
+    execution:
+      onStart:
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] started"
+          fi
+        - |
+          if [ "${SKIP_SD_DOCKER_IMAGE_BUILD}" == "yes" ]; then
+              echo "Skipping build step as SKIP_SD_DOCKER_IMAGE_BUILD=yes"
+              exit 0
+          elif [ ! -z "${SKIP_PLATFORM}" ]; then
+              add_run_variables SET_SD_DOCKER_TAG=latest
+              add_run_variables SD_DOCKER_RUN_TAG=latest
+              add_run_variables SET_CLEANUP=no
+              echo "Skipping build step as SKIP_PLATFORM=yes"
+              exit 0
+          fi
+      onExecute:
+        - >-
+          eval "$(ssh-agent -s)" && chmod -R 600 ~/.ssh/* && ssh-add
+          ~/.ssh/pipelines_read_access
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - 'echo "Set required resources:"'
+        - 'cd ${res_devops_tools_feat_pr_resourcePath}'
+        - >-
+          git checkout ${SET_DEVOPS_TOOLS_BRANCH} && git branch && git rev-parse
+          HEAD && git status
+        - 'cd ${res_saas_deployer_feat_pr_resourcePath}'
+        - >-
+          git checkout ${SET_SAAS_DEPLOYER_BRANCH} && git branch && git
+          rev-parse HEAD && git status
+        - 'cd ${res_devops_tools_feat_pr_resourcePath}'
+        - echo "Build SaaS Deployer Feature Image"
+        - >
+          if [ "${SET_SAAS_HELM_VALUES_BRANCH}" != "master" ] && [ ! -z "${PR}"
+          ]; then
+              . ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/get-saas-deployer-version.sh
+              echo "Retagging latest saas-deployer docker image ${LATEST_SAAS_DEPLOYER_VERSION} as ${SET_SD_DOCKER_TAG}"
+              export DOCKER_PULL_IMAGE=${DOCKER_PUSH_REPO}/jfrog/devops/jfrog-saas-deployer:${LATEST_SAAS_DEPLOYER_VERSION}
+              export DOCKER_PUSH_IMAGE=${DOCKER_PUSH_REPO}/jfrog/devops/jfrog-saas-deployer:${SET_SD_DOCKER_TAG}
+              docker login -u ${REPO_USER} -p ${REPO_PASS} ${DOCKER_PUSH_REPO}
+              docker pull ${DOCKER_PULL_IMAGE}
+              docker tag ${DOCKER_PULL_IMAGE} ${DOCKER_PUSH_IMAGE}
+              jfrog rt docker-push "${DOCKER_PUSH_IMAGE}" devops-docker --build-name="devops-${DOCKER_PUSH_IMAGE}" --build-number="${run_number}" --server-id=devops_auto_entplus
+          elif [ "${SET_SAAS_HELM_VALUES_BRANCH}" != "master" ] && [
+          "${SET_DEVOPS_TOOLS_BRANCH}" == "master" ] && [
+          "${SET_SAAS_DEPLOYER_BRANCH}" == "master" ] && [ -z "${PR}" ]; then
+              . ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/get-saas-deployer-version.sh
+              echo "Retagging latest saas-deployer docker image ${LATEST_SAAS_DEPLOYER_VERSION} as ${SET_SD_DOCKER_TAG}"
+              export DOCKER_PULL_IMAGE=${DOCKER_PUSH_REPO}/jfrog/devops/jfrog-saas-deployer:${LATEST_SAAS_DEPLOYER_VERSION}
+              export DOCKER_PUSH_IMAGE=${DOCKER_PUSH_REPO}/jfrog/devops/jfrog-saas-deployer:${SET_SD_DOCKER_TAG}
+              docker login -u ${REPO_USER} -p ${REPO_PASS} ${DOCKER_PUSH_REPO}
+              docker pull ${DOCKER_PULL_IMAGE}
+              docker tag ${DOCKER_PULL_IMAGE} ${DOCKER_PUSH_IMAGE}
+              jfrog rt docker-push "${DOCKER_PUSH_IMAGE}" devops-docker --build-name="devops-${DOCKER_PUSH_IMAGE}" --build-number="${run_number}" --server-id=devops_auto_entplus
+          else
+              echo "Building devops-tools python packages"
+              export GIT_BRANCH=${SET_DEVOPS_TOOLS_BRANCH}
+              curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+              docker login -u ${REPO_USER} -p ${REPO_PASS} ${DOCKER_PULL_REPO}
+              devopstools-docker-base/build.sh pack
+              cd devopstools-docker-builder
+              ./build.sh all
+              cd ${res_saas_deployer_feat_pr_resourcePath}
+              echo "Building new saas-deployer docker image ${SET_SD_DOCKER_TAG}"
+              export GIT_BRANCH=${SET_SAAS_DEPLOYER_BRANCH}
+              cp -f docker/Dockerfile.dev docker/Dockerfile
+              sed -i "s/<BASE_IMAGE_TAG>/${SD_BASE_IMAGE_TAG}/" docker/Dockerfile
+              ./build.sh prepare
+              ./build.sh pack
+              ./build.sh publish
+          fi
+        - 'echo "Docker image built - ${SET_SD_DOCKER_TAG}"'
+      onSuccess:
+        - echo "Triggering Yamls validation"
+        - >-
+          write_output sd_feature_validate_yamls startStep="$(head /dev/urandom
+          | tr -dc a-z0-9 | head -c 10)"
+        - >
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Successfully Completed"
+          elif [ ! -z "${TRIGGER_UI}" ] && [ "${SKIP_SD_DOCKER_IMAGE_BUILD}" ==
+          "no" ]; then
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release successfully built \n Deployer version=[${SET_SD_DOCKER_TAG}] \n Run URL=[${step_url}]"
+          fi
+      onFailure:
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Failed"
+              if [ ! -z "${SLACK_USER_NAME}" ]; then
+                  export BUILD_FAILED="true"
+                  echo "Sending notification to ${SLACK_USER_NAME}"
+                  ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/slack-message-pr.sh
+              fi
+          else
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release failed \n Deployer version=[${SET_SD_DOCKER_TAG}] \n Step=[${step_name}] \n Run URL=[${step_url}]"
+          fi
+  - name: sd_feature_3_of_6_validate_yamls
+    type: Bash
+    configuration:
+      nodePool: saas-deployer-feature-build-node-pool
+      affinityGroup: sdFeatureBuildGroup
+      runtime:
+        type: image
+        image:
+          custom:
+            registry: repo_devops_docker
+            name: repo-devops-docker.jfrog.io/jfrog/devops/jfrog-saas-deployer
+            tag: '${SET_SD_DOCKER_TAG}'
+            autoPull: true
+            options: '--entrypoint=""'
+      inputResources:
+        - name: sd_feature_validate_yamls
+          newVersionOnly: true
+          trigger: true
+        - name: saas_deployer_feature_pipelines
+          trigger: false
+        - name: saas_deployer_feat_pr
+          trigger: false
+        - name: devops_tools_feat_pr
+          trigger: false
+        - name: saas_helm_values_feat_pr
+          trigger: false
+      integrations:
+        - name: devops_auto_entplus
+        - name: saas_deployer_feature_release_slack
+        - name: saas_deployer_feature_release_slack_pr
+        - name: devops_saas_stg_narcissus
+        - name: devops_saas_dev_narcissus
+        - name: saas_deployer_sdm_creds
+        - name: jfrog_saas_deployer_helm
+      outputResources:
+        - name: sd_feature_helm_values_build
+      environmentVariables:
+        LC_ALL: C.UTF-8
+        LANG: C.UTF-8
+        SAAS_CONFIGURATION_BASE_DIR: /opt/jfrog/saas-deployer
+        JFROG_DEVOPS_TOOLS_VERSION: latest
+        JFROG_SERVER_ENVIRONMENT: '${JFROG_SERVER_ENVIRONMENT}'
+        WORKDIR: /opt/jfrog/saas-deployer
+        SDM_ADMIN_TOKEN: '${int_saas_deployer_sdm_creds_token}'
+        USE_SDM: 'true'
+        DEVELOPMENT_MODE: 'true'
+        JFROG_SAAS_HELM_VALUES_VERSION: local
+    execution:
+      onStart:
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] started"
+          fi
+        - >
+          if [ "${SET_SKIP_YAMLS_VALIDATION}" == "yes" ] || [
+          "${SET_SAAS_HELM_VALUES_BRANCH}" == "master" ]; then
+              echo "Skipping yaml validation step"
+              exit 0
+          fi
+      onExecute:
+        - >-
+          eval "$(ssh-agent -s)" && chmod -R 600 ~/.ssh/* && ssh-add
+          ~/.ssh/pipelines_read_access
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - 'git checkout ${PIPELINES_BRANCH} && git branch && git status'
+        - ./pipelines/scripts/copy-saas-helm-values.sh
+        - ./pipelines/scripts/copy-saas-configuration.sh
+        - sdm config freezeVersion true
+        - sdm install --user root
+        - sdm login
+        - sdm k8s update-config --force
+        - 'echo "Build node external IP $(curl -s https://ifconfig.me)"'
+        - |
+          if [ ! -z "${PR}" ]; then
+              export SET_ACCOUNT_TYPE="free"
+              echo "Starting JFrog Platform Apps Yamls validation tier: ${SET_ACCOUNT_TYPE}"
+              ./pipelines/scripts/validate-yamls-dry-run.sh
+              export SET_ACCOUNT_TYPE="enterprise_plus"
+              echo "Starting JFrog Platform Apps Yamls validation tier: ${SET_ACCOUNT_TYPE}"
+              ./pipelines/scripts/validate-yamls-dry-run.sh
+          else
+              if [ "${SET_DEPLOYMENT_TYPE}" == "cloud" ]; then
+                  echo "Starting JFrog Platform Apps Yamls validation tier: ${SET_ACCOUNT_TYPE}"
+                  ./pipelines/scripts/validate-yamls-dry-run.sh
+              elif [ "${SET_DEPLOYMENT_TYPE}" == "onprem" ]; then
+                  echo "Starting JFrog Platform Apps Yamls validation for Deployment type onprem"
+                  export SET_CUSTOMER_NAME="dryruneplusonpremstgeuc1"
+                  ./pipelines/scripts/validate-yamls-dry-run.sh
+                  export SET_CUSTOMER_NAME="repo21dryrunonpremstgeuc1"
+                  ./pipelines/scripts/validate-yamls-dry-run.sh
+              fi
+          fi
+      onSuccess:
+        - echo "Triggering helm values build"
+        - >-
+          write_output sd_feature_helm_values_build startStep="$(head
+          /dev/urandom | tr -dc a-z0-9 | head -c 10)"
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Successfully Completed"
+          elif [ ! -z "${TRIGGER_UI}" ]; then
+              if [ "${SET_SKIP_YAMLS_VALIDATION}" == "no" ]; then
+                  send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release Yamls successfully validated \n Deployer version=[${SET_SD_DOCKER_TAG}] \n Run URL=[${step_url}]"
+              fi
+          fi
+      onFailure:
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Failed"
+              if [ ! -z "${SLACK_USER_NAME}" ]; then
+                  export BUILD_FAILED="true"
+                  echo "Sending notification to ${SLACK_USER_NAME}"
+                  ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/slack-message-pr.sh
+              fi
+          else
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release Yamls validation failed \n Deployer version=[${SET_SD_DOCKER_TAG}] \n Step=[${step_name}] \n Run URL=[${step_url}]"
+          fi
+  - name: sd_feature_4_of_6_helm_values_build
+    type: Bash
+    configuration:
+      nodePool: saas-deployer-feature-build-node-pool
+      affinityGroup: sdFeatureBuildGroup
+      inputResources:
+        - name: sd_feature_helm_values_build
+          newVersionOnly: true
+          trigger: true
+        - name: saas_deployer_feature_pipelines
+          trigger: false
+        - name: saas_deployer_feat_pr
+          trigger: false
+        - name: devops_tools_feat_pr
+          trigger: false
+        - name: saas_helm_values_feat_pr
+          trigger: false
+      integrations:
+        - name: devops_auto_entplus
+        - name: saas_deployer_feature_release_slack
+        - name: saas_deployer_feature_release_slack_pr
+        - name: cloud_edges_slack
+        - name: saas_helm_values_releases_slack
+      outputResources:
+        - name: sd_feature_deploy_test_region
+    execution:
+      onStart:
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] started"
+          fi
+        - |
+          if [ ! -z "${SKIP_PLATFORM}" ]; then
+              echo "Skipping helm values build step"
+              exit 0
+          fi
+      onExecute:
+        - >-
+          eval "$(ssh-agent -s)" && chmod -R 600 ~/.ssh/* && ssh-add
+          ~/.ssh/pipelines_read_access
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - 'echo "saas-helm-values branch ${SET_SAAS_HELM_VALUES_BRANCH}"'
+        - |
+          if [ "${SET_SAAS_HELM_VALUES_BRANCH}" == "master" ]; then
+              cd ${res_saas_helm_values_feat_pr_resourcePath}
+              git checkout ${SET_SAAS_HELM_VALUES_BRANCH} && git branch && git status
+              add_run_variables SET_SAAS_HELM_VALUES_VERSION="$(git describe --abbrev=0 --tags)"
+              add_run_variables JFROG_SAAS_HELM_VALUES_VERSION="${SET_SAAS_HELM_VALUES_VERSION}"
+              echo "SET_SAAS_HELM_VALUES_VERSION=${SET_SAAS_HELM_VALUES_VERSION}"
+          else
+              export GIT_BRANCH=${SET_SAAS_HELM_VALUES_BRANCH}
+              add_run_variables SET_SAAS_HELM_VALUES_VERSION="$(echo ${GIT_BRANCH} | tr '[:upper:]' '[:lower:]' | sed 's|/|-|g')-b${run_number}"
+              add_run_variables JFROG_SAAS_HELM_VALUES_VERSION="${SET_SAAS_HELM_VALUES_VERSION}"
+              echo "SET_SAAS_HELM_VALUES_VERSION=${SET_SAAS_HELM_VALUES_VERSION}"
+              cd ${res_saas_helm_values_feat_pr_resourcePath}
+              git checkout ${SET_SAAS_HELM_VALUES_BRANCH} && git branch && git status
+              git clone ssh://git@git.jfrog.info/devops/saas-helm-values-apps.git
+              cd saas-helm-values-apps/
+              mkdir -p ${res_saas_helm_values_feat_pr_resourcePath}/kubectl-deployment/templates
+              echo "Copy saas-helm-values-apps files"
+              echo "copy ./templates/* ${res_saas_helm_values_feat_pr_resourcePath}/templates"
+              cp -frv ./templates/* ${res_saas_helm_values_feat_pr_resourcePath}/templates
+              cd ${res_saas_helm_values_feat_pr_resourcePath}
+              ./build.sh publish_dev
+          fi
+        - |
+          if [ "${SAAS_HELM_VALUES_HOT_FIX}" == "yes" ]; then
+              ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/saas-helm-values-hot-fix-edges.sh
+              send_notification cloud_edges_slack --text "SaaS Helm Values Templates Hot Fix released successfully \n saas-helm-values/${SET_SAAS_HELM_VALUES_VERSION}/saas-helm-values-${SET_SAAS_HELM_VALUES_VERSION}.tgz \n branch=[${SET_SAAS_HELM_VALUES_BRANCH}]"
+              send_notification saas_helm_values_releases_slack --text "SaaS Helm Values Templates Hot Fix released successfully to Edges \n version=[${JFROG_SAAS_HELM_VALUES_VERSION}] \n branch ${SET_SAAS_HELM_VALUES_BRANCH}"
+          fi
+      onSuccess:
+        - |
+          if [ "${SET_TEST_REGION}" == "none" ]; then
+              echo "Skipping test region deployment and ending the job"
+          else
+              echo "Triggering test region deployment"
+              write_output sd_feature_deploy_test_region startStep="$(head /dev/urandom | tr -dc a-z0-9 | head -c 10)"
+          fi
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Successfully Completed"
+          elif [ ! -z "${TRIGGER_UI}" ]; then
+              if [ "${SET_SAAS_HELM_VALUES_BRANCH}" != "master" ]; then
+                  send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release successfully released to Repo21 \n Helm Values Version=[${SET_SAAS_HELM_VALUES_VERSION}] \n Run URL=[${step_url}]"
+              fi
+          fi
+      onFailure:
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Failed"
+              if [ ! -z "${SLACK_USER_NAME}" ]; then
+                  export BUILD_FAILED="true"
+                  echo "Sending notification to ${SLACK_USER_NAME}"
+                  ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/slack-message-pr.sh
+              fi
+          else
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release build failed \n Helm Values Version=[${SET_SAAS_HELM_VALUES_VERSION}] \n Step=[${step_name}] \n Run URL=[${step_url}]"
+          fi
+  - name: sd_feature_5_of_6_deploy_test_region
+    type: Bash
+    configuration:
+      nodePool: saas-deployer-feature-build-node-pool
+      affinityGroup: sdFeatureBuildGroup
+      runtime:
+        type: image
+        image:
+          custom:
+            registry: repo_devops_docker
+            name: repo-devops-docker.jfrog.io/jfrog/devops/jfrog-saas-deployer
+            tag: '${SET_SD_DOCKER_TAG}'
+            autoPull: true
+            options: '--entrypoint=""'
+      inputResources:
+        - name: sd_feature_deploy_test_region
+          newVersionOnly: true
+          trigger: true
+        - name: saas_deployer_feature_pipelines
+          trigger: false
+        - name: saas_deployer_feat_pr
+          trigger: false
+        - name: devops_tools_feat_pr
+          trigger: false
+        - name: saas_helm_values_feat_pr
+          trigger: false
+      integrations:
+        - name: devops_auto_entplus
+        - name: saas_deployer_feature_release_slack
+        - name: saas_deployer_feature_release_slack_pr
+        - name: devops_saas_dev_narcissus
+        - name: devops_saas_stg_narcissus
+        - name: saas_deployer_sdm_creds
+      environmentVariables:
+        LC_ALL: C.UTF-8
+        LANG: C.UTF-8
+        SAAS_CONFIGURATION_BASE_DIR: /opt/jfrog/saas-deployer
+        JFROG_DEVOPS_TOOLS_VERSION: latest
+        WORKDIR: /opt/jfrog/saas-deployer
+        SKIP_TESTSERVER: 'true'
+        DEVELOPMENT_MODE: 'true'
+        SDM_ADMIN_TOKEN: '${int_saas_deployer_sdm_creds_token}'
+        USE_SDM: 'true'
+        JFROG_SAAS_HELM_VALUES_VERSION: local
+    execution:
+      onStart:
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Started"
+          fi
+        - |
+          if [ ! -z "${SKIP_PLATFORM}" ]; then
+              echo "Skipping test region deployment"
+              exit 0
+          fi
+        - |
+          if [ "${JFROG_SERVER_ENVIRONMENT}" == "development" ]; then
+              export NARCISSUS_USER=${int_devops_saas_dev_narcissus_user}
+              export NARCISSUS_PASSWORD=${int_devops_saas_dev_narcissus_password}
+          elif [ "${JFROG_SERVER_ENVIRONMENT}" == "staging" ]; then
+              export NARCISSUS_USER=${int_devops_saas_stg_narcissus_user}
+              export NARCISSUS_PASSWORD=${int_devops_saas_stg_narcissus_password}
+          fi
+      onExecute:
+        - >-
+          eval "$(ssh-agent -s)" && chmod -R 600 ~/.ssh/* && ssh-add
+          ~/.ssh/pipelines_read_access
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - ./pipelines/scripts/copy-saas-configuration.sh
+        - ./pipelines/scripts/copy-saas-helm-values.sh
+        - ./pipelines/scripts/copy-saas-helm-values-apps.sh
+        - |
+          if [ "${SET_REGION_EXTRA_PARAMS}" == "none" ]; then
+              export PASS_REGION_EXTRA_PARAMS="jfrog_saas_deployer_version=${SET_SD_DOCKER_TAG}"
+          else
+              PASS_REGION_EXTRA_PARAMS=$(echo ${SET_REGION_EXTRA_PARAMS} | tr ' ' ',')
+              export PASS_REGION_EXTRA_PARAMS="jfrog_saas_deployer_version=${SET_SD_DOCKER_TAG},${PASS_REGION_EXTRA_PARAMS}"
+          fi
+        - sdm config freezeVersion true
+        - sdm install --user root
+        - sdm login
+        - sdm k8s update-config --force
+        - 'echo "Build node external IP $(curl -s https://ifconfig.me)"'
+        - >-
+          echo "Deploying saas deployer test region ${SET_TEST_REGION} to parent
+          region ${SET_PARENT_REGION}"
+        - ./pipelines/scripts/test-region-deploy.sh
+        - |
+          if [ ! -z "${PR}" ]; then
+              export TEST_REGION_NAME=${SET_TEST_REGION}
+              export SET_TEST_REGION=${TEST_REGION_NAME}gc
+              export SET_PARENT_REGION=gcdev-2-euw1
+              echo "Deploying saas deployer test region ${SET_TEST_REGION} to parent region ${SET_PARENT_REGION}"
+              ./pipelines/scripts/test-region-deploy.sh
+          fi
+      onSuccess:
+        - add_run_variables PIPE_SUCCESS_STATUS=true
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Successfully Completed"
+          elif [ ! -z "${TRIGGER_UI}" ]; then
+              send_notification saas_deployer_feature_release_slack --text "SaaS Deployer Feature Release successfully deployed \n Test Region=[${SET_TEST_REGION}] \n Parent Region=[${SET_PARENT_REGION}] \n Run URL=[${step_url}]"
+          fi
+      onFailure:
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - add_run_variables PIPE_SUCCESS_STATUS=false
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Failed"
+              if [ ! -z "${SLACK_USER_NAME}" ]; then
+                  export BUILD_FAILED="true"
+                  echo "Sending notification to ${SLACK_USER_NAME}"
+                  ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/slack-message-pr.sh
+              fi
+          elif [ ! -z "${TRIGGER_UI}" ]; then
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release failed \n Test Region=[${SET_TEST_REGION}] \n Step=[${step_name}] \n Run URL=[${step_url}]"
+          fi
+  - name: sd_feature_6_of_6_deploy_jfrog_platform
+    type: Bash
+    configuration:
+      nodePool: saas-deployer-feature-build-node-pool
+      affinityGroup: sdFeatureBuildGroup
+      runtime:
+        type: image
+        image:
+          custom:
+            registry: repo_devops_docker
+            name: repo-devops-docker.jfrog.io/jfrog/devops/jfrog-saas-deployer
+            tag: '${SD_DOCKER_RUN_TAG}'
+            autoPull: true
+            options: '--entrypoint=""'
+      inputSteps:
+        - name: sd_feature_5_of_6_deploy_test_region
+          status:
+            - success
+      inputResources:
+        - name: saas_deployer_feature_pipelines
+          trigger: false
+        - name: saas_deployer_feat_pr
+          trigger: false
+        - name: devops_tools_feat_pr
+          trigger: false
+        - name: saas_helm_values_feat_pr
+          trigger: false
+      integrations:
+        - name: devops_auto_entplus
+        - name: devops_auto_bitbucket
+        - name: saas_deployer_feature_release_slack
+        - name: saas_deployer_feature_release_slack_pr
+        - name: devops_saas_dev_narcissus
+        - name: devops_saas_stg_narcissus
+        - name: saas_deployer_sdm_creds
+      environmentVariables:
+        SAAS_CONFIGURATION_BASE_DIR: /opt/jfrog/saas-deployer
+        JFROG_DEVOPS_TOOLS_VERSION: latest
+        LC_ALL: C.UTF-8
+        LANG: C.UTF-8
+        WORKDIR: /opt/jfrog/saas-deployer
+        SKIP_TESTSERVER: 'true'
+        DEVELOPMENT_MODE: 'true'
+        SDM_ADMIN_TOKEN: '${int_saas_deployer_sdm_creds_token}'
+        USE_SDM: 'true'
+    execution:
+      onStart:
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Started"
+          fi
+        - >
+          if [ "${SET_SERVER_NAME}" == "none" ] || [ ! -z "${SKIP_PLATFORM}" ];
+          then
+              echo "Skipping test server deployment"
+              exit 0
+          fi
+        - |
+          if [ "${JFROG_SERVER_ENVIRONMENT}" == "development" ]; then
+              export NARCISSUS_USER=${int_devops_saas_dev_narcissus_user}
+              export NARCISSUS_PASSWORD=${int_devops_saas_dev_narcissus_password}
+          elif [ "${JFROG_SERVER_ENVIRONMENT}" == "staging" ]; then
+              export NARCISSUS_USER=${int_devops_saas_stg_narcissus_user}
+              export NARCISSUS_PASSWORD=${int_devops_saas_stg_narcissus_password}
+          fi
+      onExecute:
+        - >-
+          eval "$(ssh-agent -s)" && chmod -R 600 ~/.ssh/* && ssh-add
+          ~/.ssh/pipelines_read_access
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - ./pipelines/scripts/copy-saas-configuration.sh
+        - sdm config freezeVersion true
+        - sdm install --user root
+        - sdm login
+        - sdm k8s update-config --force
+        - 'echo "Build node external IP $(curl -s https://ifconfig.me)"'
+        - echo "Deploy test server"
+        - |
+          if [ ! -z "${PR}" ]; then
+              export SET_ACCOUNT_TYPE="free"
+              export SET_SERVER_NAME="${testServer}f"
+              export TEST_REGION_NAME=${SET_TEST_REGION}
+              echo "Deploying server ${SET_SERVER_NAME} to test region ${SET_TEST_REGION}..."
+              ./pipelines/scripts/test-server-deploy.sh
+              echo "----------------------------------"
+              export SET_ACCOUNT_TYPE="enterprise_plus"
+              export SET_SERVER_NAME="${testServer}e"
+              echo "Deploying server ${SET_SERVER_NAME} to test region ${SET_TEST_REGION}..."
+              ./pipelines/scripts/test-server-deploy.sh
+              echo "----------------------------------"
+              export SET_ACCOUNT_TYPE="free"
+              export SET_SERVER_NAME="${testServer}gcf"
+              export SET_TEST_REGION=${TEST_REGION_NAME}gc
+              echo "Deploying server ${SET_SERVER_NAME} to test region ${SET_TEST_REGION}..."
+              ./pipelines/scripts/test-server-deploy.sh
+              echo ""
+          else
+              echo "Deploying server ${SET_SERVER_NAME} to test region ${SET_TEST_REGION}..."
+              ./pipelines/scripts/test-server-deploy.sh
+          fi
+      onSuccess:
+        - add_run_variables PIPE_SUCCESS_STATUS=true
+        - >
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Successfully Completed"
+              if [ ! -z "${SLACK_USER_NAME}" ]; then
+                  echo "Sending notification to ${SLACK_USER_NAME}"
+                  ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/slack-message-pr.sh
+              fi
+          elif [ ! -z "${TRIGGER_UI}" ] && [ "${SET_SERVER_NAME}" != "none" ];
+          then
+              send_notification saas_deployer_feature_release_slack --text "SaaS Deployer Feature Release successfully deployed \n Server=[${SET_ACCOUNT_TYPE}]/[${SET_SERVER_NAME}] \n Test Region=[${SET_TEST_REGION}] \n Run URL=[${step_url}]"
+          fi
+      onFailure:
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - add_run_variables PIPE_SUCCESS_STATUS=false
+        - |
+          if [ ! -z "${PR}" ]; then
+              update_commit_status ${RESOURCE_FROM} --message "SaaS Deployer Feature Release [Step ${step_name}] Failed"
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release deployment failed \n PR=[${PR_URL}] \n Step=[${step_name}] \n Run URL=[${step_url}]"
+              if [ ! -z "${SLACK_USER_NAME}" ]; then
+                  export BUILD_FAILED="true"
+                  echo "Sending notification to ${SLACK_USER_NAME}"
+                  ${res_saas_deployer_feature_pipelines_resourcePath}/pipelines/scripts/slack-message-pr.sh
+              fi
+          else
+              send_notification ${SLACK_NOTIFICATION_CHANNEL} --text "SaaS Deployer Feature Release deployment failed \n Server=[${SET_ACCOUNT_TYPE}]/[${SET_SERVER_NAME}] \n Step=[${step_name}] \n Run URL=[${step_url}]"
+          fi
+  - name: sd_feature_7_cleanup
+    type: Bash
+    configuration:
+      nodePool: saas-deployer-feature-build-node-pool
+      affinityGroup: sdFeatureBuildGroup
+      runtime:
+        type: image
+        image:
+          custom:
+            registry: repo_devops_docker
+            name: repo-devops-docker.jfrog.io/jfrog/devops/jfrog-saas-deployer
+            tag: '${SD_DOCKER_RUN_TAG}'
+            autoPull: true
+            options: '--entrypoint=""'
+      inputSteps:
+        - name: sd_feature_5_of_6_deploy_test_region
+          status:
+            - success
+            - failure
+            - cancelled
+        - name: sd_feature_6_of_6_deploy_jfrog_platform
+          status:
+            - success
+            - failure
+            - skipped
+            - cancelled
+      inputResources:
+        - name: saas_deployer_feature_pipelines
+          trigger: false
+        - name: saas_deployer_feat_pr
+          trigger: false
+        - name: devops_tools_feat_pr
+          trigger: false
+        - name: saas_helm_values_feat_pr
+          trigger: false
+      integrations:
+        - name: devops_auto_entplus
+        - name: saas_deployer_feature_release_slack
+        - name: saas_deployer_feature_release_slack_pr
+        - name: devops_saas_dev_narcissus
+        - name: devops_saas_stg_narcissus
+        - name: saas_deployer_sdm_creds
+      outputResources:
+        - name: feature_release_versions
+      environmentVariables:
+        SAAS_CONFIGURATION_BASE_DIR: /opt/jfrog/saas-deployer
+        JFROG_DEVOPS_TOOLS_VERSION: latest
+        LC_ALL: C.UTF-8
+        LANG: C.UTF-8
+        WORKDIR: /opt/jfrog/saas-deployer
+        SKIP_TESTSERVER: 'true'
+        SDM_ADMIN_TOKEN: '${int_saas_deployer_sdm_creds_token}'
+        USE_SDM: 'true'
+    execution:
+      onStart:
+        - |
+          if [ "${SET_CLEANUP}" == "no" ] || [ ! -z "${SKIP_PLATFORM}" ]; then
+              echo "Skipping cleanup"
+              exit 0
+          fi
+        - |
+          if [ "${JFROG_SERVER_ENVIRONMENT}" == "development" ]; then
+              export NARCISSUS_USER=${int_devops_saas_dev_narcissus_user}
+              export NARCISSUS_PASSWORD=${int_devops_saas_dev_narcissus_password}
+          elif [ "${JFROG_SERVER_ENVIRONMENT}" == "staging" ]; then
+              export NARCISSUS_USER=${int_devops_saas_stg_narcissus_user}
+              export NARCISSUS_PASSWORD=${int_devops_saas_stg_narcissus_password}
+          fi
+      onExecute:
+        - >-
+          eval "$(ssh-agent -s)" && chmod -R 600 ~/.ssh/* && ssh-add
+          ~/.ssh/pipelines_read_access
+        - >-
+          write_output feature_release_versions
+          saasDeployerVersion="${SET_SD_DOCKER_TAG}"
+          saasHelmValuesVersion="${SET_SAAS_HELM_VALUES_VERSION}"
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - ./pipelines/scripts/copy-saas-configuration.sh
+        - ./pipelines/scripts/copy-saas-helm-values-apps.sh
+        - sdm config freezeVersion true
+        - sdm install --user root
+        - sdm login
+        - sdm k8s update-config --force
+        - 'echo "Undeploying test region ${SET_TEST_REGION}..."'
+        - ./pipelines/scripts/test-region-undeploy.sh
+        - |
+          if [ ! -z "${PR}" ]; then
+              export TEST_REGION_NAME=${SET_TEST_REGION}
+              echo "----------------------------------------"
+              export SET_TEST_REGION=${TEST_REGION_NAME}gc
+              export SET_PARENT_REGION=gcdev-2-euw1
+              echo "Undeploying test region ${SET_TEST_REGION}..."
+              ./pipelines/scripts/test-region-undeploy.sh
+              echo "Cleanup SaaS Deployer docker image - ${SET_SD_DOCKER_TAG}"
+              curl -u${int_devops_auto_entplus_user}:${int_devops_auto_entplus_apikey} -X DELETE "https://entplus.jfrog.io/artifactory/devops-docker/jfrog/devops/jfrog-saas-deployer/${SET_SD_DOCKER_TAG}"
+          fi
+        - |
+          if [ "${PIPE_SUCCESS_STATUS}" == "false" ]; then
+              echo "PIPE_SUCCESS_STATUS=false, failing the Pipeline"
+              exit 1
+          fi
+      onSuccess:
+        - echo "Cleanup succeeded"
+      onFailure:
+        - 'cd ${res_saas_deployer_feature_pipelines_resourcePath}'
+        - >-
+          git checkout ${PIPELINES_BRANCH} && git branch && git rev-parse HEAD
+          && git status
+        - add_run_variables PIPE_SUCCESS_STATUS=false
+        - |
+          if [ ! -z "${PR}" ]; then
+              send_notification saas_deployer_feature_release_slack_pr --text "SaaS Deployer Feature Release deployment failed \n PR=[${PR_URL}] \n Step=[${step_name}] \n Run URL=[${step_url}]"
+          else
+              send_notification saas_deployer_feature_release_slack --text "SaaS Deployer Feature Release deployment failed \n Step=[${step_name}] \n Run URL=[${step_url}]"
+          fi
