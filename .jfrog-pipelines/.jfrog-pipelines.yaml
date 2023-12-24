@@ -177,7 +177,7 @@ pipelines:
             type: image
             image:
               custom:
-                registry: z0jonathanf2.jfrogdev.org
+                registry: mypipelines_docker
                 sourceRepository: quickstarts-target-local
                 name: z0jonathanf2.jfrogdev.org/quickstarts-target-local/dbp
                 tag: latest
