@@ -164,7 +164,7 @@ pipelines:
           outputResources:
             - name: dbp_promoted_build_info
 
-  - name: Run container
+  - name: Run_container
     configuration:
       jfrogCliVersion: 2
       runtime:
