@@ -164,22 +164,31 @@ pipelines:
           outputResources:
             - name: dbp_promoted_build_info
 
-
       - name: Run_container
         type: Bash
         configuration:
-          runtime:
-            type: image
-            image:
-              custom:
-                name: releases-docker.jfrog.io/jfrog/pipelines-u18node
-                tag: "16"
-                autoPull: true
           inputSteps:
             - name: promote_dbp_build
         execution:
           onExecute:
-            - echo "hello world"
+            - "docker run -d z0jonathanf2.jfrogdev.org/docker-local/dbp:latest"
+
+
+#      - name: Run_container
+#        type: Bash
+#        configuration:
+#          runtime:
+#            type: image
+#            image:
+#              custom:
+#                name: releases-docker.jfrog.io/jfrog/pipelines-u18node
+#                tag: "16"
+#                autoPull: true
+#          inputSteps:
+#            - name: promote_dbp_build
+#        execution:
+#          onExecute:
+#            - echo "hello world"
 
 
 
