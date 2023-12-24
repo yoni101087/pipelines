@@ -179,7 +179,7 @@ pipelines:
               custom:
                 registry: mypipelines_docker
                 sourceRepository: quickstarts-target-local
-                name: z0jonathanf2.jfrogdev.org/quickstarts-target-local/dbp
+                name: quickstarts-target-local/dbp
                 tag: latest
         execution:
           onExecute:
