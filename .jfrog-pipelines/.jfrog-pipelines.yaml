@@ -179,8 +179,8 @@ pipelines:
             image:
               custom:
                 registry: mypipelines_docker
-                sourceRepository: quickstarts-target-local
-                name: dbp
+                sourceRepository: quickstarts-target-local/dbp
+                name: quickstarts-target-local/dbp
                 tag: '9'
         execution:
           onExecute:
