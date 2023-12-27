@@ -169,6 +169,7 @@ pipelines:
         type: Bash
         configuration:
           integrations:
+            - name: artifactoryIntegration
             - name: mypipelines_docker
           timeoutSeconds: 1800
           inputSteps:
