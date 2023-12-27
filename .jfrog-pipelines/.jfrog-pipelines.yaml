@@ -181,7 +181,7 @@ pipelines:
                 registry: mypipelines_docker
                 sourceRepository: quickstarts-target-local
                 name: quickstarts-target-local/dbp
-                tag: latest
+                tag: '9'
         execution:
           onExecute:
             - echo "Test OK"
