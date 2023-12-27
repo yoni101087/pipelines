@@ -179,7 +179,6 @@ pipelines:
             image:
               custom:
                 registry: mypipelines_docker
-                sourceRepository: z0jonathanf2.jfrogdev.org/quickstarts-target-local/dbp
                 name: z0jonathanf2.jfrogdev.org/quickstarts-target-local/dbp
                 tag: '9'
         execution:
